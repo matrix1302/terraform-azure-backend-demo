@@ -1,0 +1,9 @@
+# Terraform working directory
+.terraform/
+# Terraform state files
+terraform.tfstate
+terraform.tfstate.*
+# Terraform plan files
+*.tfplan
+# Crash logs
+crash.log
