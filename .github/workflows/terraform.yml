@@ -28,7 +28,12 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
-        run: terraform init
+        run: |
+          terraform init \
+            -backend-config="resource_group_name=rg-terraform-backend" \
+            -backend-config="storage_account_name=sttfbackenddemo2026" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=test.terraform.tfstate"
 
       - name: Terraform Validate
         run: terraform validate
