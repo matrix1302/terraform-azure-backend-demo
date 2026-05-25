@@ -9,5 +9,6 @@ resource "azurerm_resource_group" "rg_demo_tf_backend" {
   tags = {
     environment = var.environment
     managed_by  = "terraform"
+    project = "terraform-github-demo"
   }
 }
