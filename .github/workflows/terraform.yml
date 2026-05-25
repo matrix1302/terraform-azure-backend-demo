@@ -45,9 +45,9 @@ jobs:
       - name: Terraform Init
         run: |
           terraform init \
-            -backend-config="resource_group_name=<your_state_resource_group>" \
-            -backend-config="storage_account_name=<your_state_storage_account>" \
-            -backend-config="container_name=<your_state_container>" \
+            -backend-config="resource_group_name=resource_group_name=rg-terraform-backend" \
+            -backend-config="storage_account_name=sttfbackenddemo2026" \
+            -backend-config="container_name=tfstate" \
             -backend-config="key=${TF_ENV}.terraform.tfstate"
 
       - name: Terraform Validate
