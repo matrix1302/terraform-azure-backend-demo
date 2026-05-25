@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - develop
+      - test
       - main
 
 env:
@@ -24,22 +26,35 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set Terraform Environment
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "develop" ]; then
+            echo "TF_ENV=dev" >> $GITHUB_ENV
+          elif [ "${GITHUB_REF_NAME}" = "test" ]; then
+            echo "TF_ENV=test" >> $GITHUB_ENV
+          elif [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "TF_ENV=prod" >> $GITHUB_ENV
+          else
+            echo "Unsupported branch: ${GITHUB_REF_NAME}"
+            exit 1
+          fi
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
         run: |
           terraform init \
-            -backend-config="resource_group_name=rg-terraform-backend" \
-            -backend-config="storage_account_name=sttfbackenddemo2026" \
-            -backend-config="container_name=tfstate" \
-            -backend-config="key=test.terraform.tfstate"
+            -backend-config="resource_group_name=<your_state_resource_group>" \
+            -backend-config="storage_account_name=<your_state_storage_account>" \
+            -backend-config="container_name=<your_state_container>" \
+            -backend-config="key=${TF_ENV}.terraform.tfstate"
 
       - name: Terraform Validate
         run: terraform validate
 
       - name: Terraform Plan
-        run: terraform plan -var-file="environments/test.tfvars"
+        run: terraform plan -var-file="environments/${TF_ENV}.tfvars"
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve -var-file="environments/test.tfvars"
+        run: terraform apply -auto-approve -var-file="environments/${TF_ENV}.tfvars"
