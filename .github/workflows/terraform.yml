@@ -15,6 +15,7 @@ jobs:
   terraform:
     name: Terraform Workflow
     runs-on: ubuntu-latest
+    environment: production
 
     env:
       ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
@@ -25,6 +26,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set GitHub Environment
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            echo "GH_ENV=production" >> $GITHUB_ENV
+          else
+            echo "GH_ENV=nonprod" >> $GITHUB_ENV
+          fi
 
       - name: Set Terraform Environment
         run: |
