@@ -55,7 +55,7 @@ jobs:
             echo "TF_ENV=prod" >> $GITHUB_ENV
           else
             echo "Unsupported branch: $BRANCH"
-          exit 1
+            exit 1
           fi
 
       - name: Setup Terraform
