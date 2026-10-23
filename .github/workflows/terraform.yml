@@ -8,6 +8,14 @@ on:
       - test
       - main
 
+
+  pull_request:
+    branches:
+      - develop
+      - test
+      - main
+      
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -17,13 +25,14 @@ jobs:
     runs-on: ubuntu-latest
 
     environment:
-      name: ${{ github.ref_name == 'main' && 'production' || 'nonprod' }}
+      name: ${{ github.event_name == 'pull_request' && 'nonprod' || (github.ref_name == 'main' && 'production' || 'nonprod') }}
 
     env:
-      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
-      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_CLIENT_ID: ${{ github.event_name == 'pull_request' && secrets.ARM_VALIDATION_CLIENT_ID || secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ github.event_name == 'pull_request' && secrets.ARM_VALIDATION_CLIENT_SECRET || secrets.ARM_CLIENT_SECRET }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_USE_AZUREAD: true
 
     steps:
       - name: Checkout repository
@@ -32,16 +41,21 @@ jobs:
 
       - name: Set Terraform Environment
         run: |
-          if [ "${GITHUB_REF_NAME}" = "develop" ]; then
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BRANCH="${{ github.base_ref }}"
+          else
+            BRANCH="${GITHUB_REF_NAME}"
+          fi
+
+          if [ "$BRANCH" = "develop" ]; then
             echo "TF_ENV=dev" >> $GITHUB_ENV
-          elif [ "${GITHUB_REF_NAME}" = "test" ]; then
+          elif [ "$BRANCH" = "test" ]; then
             echo "TF_ENV=test" >> $GITHUB_ENV
-          elif [ "${GITHUB_REF_NAME}" = "main" ]; then
+          elif [ "$BRANCH" = "main" ]; then
             echo "TF_ENV=prod" >> $GITHUB_ENV
           else
-            echo "Unsupported branch: ${GITHUB_REF_NAME}"
-            exit 1
-          fi
+            echo "Unsupported branch: $BRANCH"
+          exit 1
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -56,4 +70,5 @@ jobs:
         run: terraform plan -var-file="environments/${TF_ENV}.tfvars"
 
       - name: Terraform Apply
+        if: github.event_name != 'pull_request'
         run: terraform apply -auto-approve -var-file="environments/${TF_ENV}.tfvars"
