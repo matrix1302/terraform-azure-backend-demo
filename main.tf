@@ -1,3 +1,5 @@
+# Terraform configuration change for GitHub Pull Request validation
+
 terraform {
   backend "azurerm" {}
 }
