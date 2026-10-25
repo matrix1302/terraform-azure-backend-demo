@@ -13,4 +13,4 @@ subnet_address_prefix = "10.10.1.0/24"
 # Azure Virtual Machine
 vm_name             = "vm-terraform-dev"
 vm_size             = "Standard_B2s"
-authentication_type = "ssh"
+authentication_type = "password"
