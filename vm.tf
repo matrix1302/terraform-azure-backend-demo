@@ -13,6 +13,12 @@ resource "azurerm_network_interface" "nic" {
     private_ip_address_allocation = "Dynamic"
   }
 
+  lifecycle {
+    ignore_changes = [
+      ip_configuration[0].public_ip_address_id
+    ]
+  }
+
   tags = {
     environment = var.environment
     managed_by  = "terraform"
