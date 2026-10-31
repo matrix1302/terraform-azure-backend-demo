@@ -7,3 +7,9 @@ vnet_name             = "vnet-terraform-prod"
 vnet_address_space    = "10.30.0.0/16"
 subnet_name           = "snet-workload"
 subnet_address_prefix = "10.30.1.0/24"
+
+
+# Azure Virtual Machine
+vm_name             = "vm-terraform-prod"
+vm_size             = "Standard_B2s"
+authentication_type = "ssh"

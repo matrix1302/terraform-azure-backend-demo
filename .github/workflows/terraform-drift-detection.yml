@@ -1,0 +1,120 @@
+name: Terraform Drift Detection
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: '0 6 * * *'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  drift-detection:
+    name: Check Production Drift
+    runs-on: ubuntu-latest
+    environment: production
+
+    env:
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      TF_VAR_admin_password: ${{ secrets.TF_VAR_ADMIN_PASSWORD }}
+
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.ARM_CLIENT_ID }}
+          tenant-id: ${{ secrets.ARM_TENANT_ID }}
+          subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Initialize Terraform
+        run: |
+          terraform init \
+            -backend-config="backend/prod.hcl" \
+            -reconfigure \
+            -input=false
+
+      - name: Validate Terraform
+        run: terraform validate -no-color
+
+      - name: Detect Configuration Drift
+        id: drift
+        shell: bash
+        run: |
+          set +e
+
+          terraform plan \
+            -var-file="environments/prod.tfvars" \
+            -detailed-exitcode \
+            -no-color \
+            -input=false \
+            -lock-timeout=5m \
+            -out=tfplan
+
+          exit_code=$?
+          set -e
+
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+
+          case "$exit_code" in
+            0)
+              echo "No Terraform changes detected."
+              ;;
+            1)
+              echo "Terraform plan failed."
+              exit 1
+              ;;
+            2)
+              echo "Terraform changes detected."
+              ;;
+            *)
+              echo "Unexpected Terraform exit code: $exit_code"
+              exit 1
+              ;;
+          esac
+
+      - name: Report Drift Detection Result
+        if: always()
+        shell: bash
+        run: |
+          case "${{ steps.drift.outputs.exit_code }}" in
+            0)
+              echo "### Terraform Drift Detection: No Changes" >> "$GITHUB_STEP_SUMMARY"
+              echo "Production infrastructure matches the Terraform configuration." >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            2)
+              echo "### Terraform Drift Detection: Changes Detected" >> "$GITHUB_STEP_SUMMARY"
+              echo "Terraform detected differences requiring review." >> "$GITHUB_STEP_SUMMARY"
+              echo "Check the execution log for details." >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            1)
+              echo "### Terraform Drift Detection: Failed" >> "$GITHUB_STEP_SUMMARY"
+              echo "Terraform plan encountered an error." >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            *)
+              echo "### Terraform Drift Detection: Incomplete" >> "$GITHUB_STEP_SUMMARY"
+              echo "Check the workflow logs for initialization or validation errors." >> "$GITHUB_STEP_SUMMARY"
+              ;;
+          esac
+
+      - name: Fail Workflow on Detected Changes
+        if: steps.drift.outputs.exit_code == '2'
+        run: |
+          echo "Terraform detected configuration differences."
+          exit 1
