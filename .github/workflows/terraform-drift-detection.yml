@@ -11,7 +11,7 @@ jobs:
   drift-detection:
     name: Check Production Drift
     runs-on: ubuntu-latest
-    environment: production
+    environment: production-monitoring
 
     env:
       ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
