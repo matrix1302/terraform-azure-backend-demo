@@ -8,16 +8,12 @@ on:
       - develop
       - test
       - main
-    paths-ignore:
-      - '.github/workflows/**'
 
   pull_request:
     branches:
       - develop
       - test
       - main
-    paths-ignore:
-      - '.github/workflows/**'
       
 
 env:
