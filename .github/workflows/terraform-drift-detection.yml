@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '17 5 * * *'
 
 jobs:
   drift-detection:
