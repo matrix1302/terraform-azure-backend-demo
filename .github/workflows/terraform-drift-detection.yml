@@ -7,6 +7,13 @@ on:
   schedule:
     - cron: '17 5 * * *'
 
+
+permissions:
+  contents: read
+  id-token: write
+
+
+
 jobs:
   drift-detection:
     name: Check Production Drift
@@ -102,6 +109,29 @@ jobs:
               echo "Check the workflow logs for initialization or validation errors." >> "$GITHUB_STEP_SUMMARY"
               ;;
           esac
+
+
+      - name: Authenticate to Microsoft Entra ID for Graph notifications
+        if: steps.drift.outputs.exit_code == '2'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.GRAPH_CLIENT_ID }}
+          tenant-id: ${{ vars.GRAPH_TENANT_ID }}
+          allow-no-subscriptions: true
+
+
+      - name: Obtain Microsoft Graph Access Token
+        if: steps.drift.outputs.exit_code == '2'
+        id: graph-token
+        shell: bash
+        run: |
+          token=$(az account get-access-token \
+            --resource https://graph.microsoft.com \
+            --query accessToken \
+            --output tsv)
+
+          echo "::add-mask::$token"
+          echo "GRAPH_ACCESS_TOKEN=$token" >> "$GITHUB_ENV"
 
       - name: Fail Workflow on Detected Changes
         if: steps.drift.outputs.exit_code == '2'
