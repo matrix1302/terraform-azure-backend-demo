@@ -133,6 +133,57 @@ jobs:
           echo "::add-mask::$token"
           echo "GRAPH_ACCESS_TOKEN=$token" >> "$GITHUB_ENV"
 
+
+      - name: Send Terraform Drift Notification
+        if: steps.drift.outputs.exit_code == '2'
+        shell: bash
+        env:
+          NOTIFICATION_SENDER: terraform-alerts@matrixpost.tech
+          NOTIFICATION_RECIPIENT: ${{ vars.DRIFT_NOTIFICATION_RECIPIENT }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          sender = os.environ["NOTIFICATION_SENDER"]
+          recipient = os.environ["NOTIFICATION_RECIPIENT"]
+
+          payload = {
+              "message": {
+                  "subject": "Terraform Drift Detected - Production",
+                  "body": {
+                      "contentType": "Text",
+                      "content": (
+                          "Terraform detected configuration drift in production.\n\n"
+                          f"Repository: {os.environ['GITHUB_REPOSITORY']}\n"
+                          f"Workflow run: {os.environ['GITHUB_SERVER_URL']}/"
+                          f"{os.environ['GITHUB_REPOSITORY']}/actions/runs/"
+                          f"{os.environ['GITHUB_RUN_ID']}\n\n"
+                          "Review the Terraform plan in the workflow logs."
+                      )
+                  },
+                  "toRecipients": [
+                      {"emailAddress": {"address": recipient}}
+                  ]
+              },
+              "saveToSentItems": True
+          }
+
+          request = urllib.request.Request(
+              f"https://graph.microsoft.com/v1.0/users/{sender}/sendMail",
+              data=json.dumps(payload).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {os.environ['GRAPH_ACCESS_TOKEN']}",
+                  "Content-Type": "application/json"
+              },
+              method="POST"
+          )
+
+          with urllib.request.urlopen(request) as response:
+              print(f"Microsoft Graph sendMail HTTP status: {response.status}")
+          PY
+
       - name: Fail Workflow on Detected Changes
         if: steps.drift.outputs.exit_code == '2'
         run: |
