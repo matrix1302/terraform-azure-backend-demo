@@ -14,6 +14,10 @@ on:
       - develop
       - test
       - main
+
+permissions:
+  contents: read
+  id-token: write
       
 
 env:
@@ -29,10 +33,10 @@ jobs:
 
     env:
       ARM_CLIENT_ID: ${{ github.event_name == 'pull_request' && secrets.ARM_VALIDATION_CLIENT_ID || secrets.ARM_CLIENT_ID }}
-      ARM_CLIENT_SECRET: ${{ github.event_name == 'pull_request' && secrets.ARM_VALIDATION_CLIENT_SECRET || secrets.ARM_CLIENT_SECRET }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
       ARM_USE_AZUREAD: true
+      ARM_USE_OIDC: true
       TF_VAR_admin_password: ${{ secrets.TF_VAR_ADMIN_PASSWORD }}
 
     steps:
